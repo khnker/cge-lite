@@ -1,0 +1,23 @@
+{
+  "name": "cge-lite",
+  "version": "1.0.0",
+  "description": "Context query engine for LLM agents — pure-JS fork of context-query-engine, zero OS tool dependencies (only @vscode/ripgrep)",
+  "type": "module",
+  "main": "engine/engine.js",
+  "bin": {
+    "cge-lite": "./engine/engine.js"
+  },
+  "scripts": {
+    "test": "node --test",
+    "start": "node engine/mcp-server.js",
+    "cli": "node engine/engine.js",
+    "bench": "node --test test/bench.test.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "@vscode/ripgrep": "^1.18.0"
+  }
+}

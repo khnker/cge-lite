@@ -1,0 +1,107 @@
+// test/interpreter.test.js — Unit tests interpreter (tasks 2.x, D21/D22).
+// node:test stdlib, lee export público interpret().
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { interpret } from '../engine/interpreter.js';
+
+test('2.1 familia definitions → confidence 0.8', () => {
+  const r = interpret('dónde está definido foo');
+  assert.equal(r.query_type, 'definitions');
+  assert.equal(r.confidence, 0.8);
+});
+
+test('2.1 familia references → confidence 0.8', () => {
+  const r = interpret('usos de bar');
+  assert.equal(r.query_type, 'references');
+  assert.equal(r.confidence, 0.8);
+});
+
+test('2.1 familia implementation → confidence 0.75', () => {
+  const r = interpret('cómo funciona x');
+  assert.equal(r.query_type, 'implementation');
+  assert.equal(r.confidence, 0.75);
+});
+
+test('2.1 familia filename → confidence 0.8', () => {
+  const r = interpret('archivo server.js');
+  assert.equal(r.query_type, 'filename');
+  assert.equal(r.confidence, 0.8);
+});
+
+test('2.1 familia pattern → confidence 0.6', () => {
+  const r = interpret('patrón de regex');
+  assert.equal(r.query_type, 'pattern');
+  assert.equal(r.confidence, 0.6);
+});
+
+test('2.1 familia concept → confidence 0.6', () => {
+  const r = interpret('concepto de auth');
+  assert.equal(r.query_type, 'concept');
+  assert.equal(r.confidence, 0.6);
+});
+
+test('extractName: snake_case en frase natural (bug MCP args)', () => {
+  assert.equal(interpret('buscar spotify_wizard en la carpeta').name, 'spotify_wizard');
+});
+
+test('extractName: archivo dotted → filename', () => {
+  const r = interpret('dónde está el archivo server.js');
+  assert.equal(r.query_type, 'filename');
+  assert.equal(r.name, 'server.js');
+});
+
+test('extractName: "la carpeta" genérico → null (fallback a token significativo)', () => {
+  const r = interpret('buscar interpret en la carpeta');
+  assert.notEqual(r.name, 'la carpeta');
+  assert.notEqual(r.name, 'carpeta');
+});
+
+test('2.1 2+ keywords de la misma familia → 0.95', () => {
+  const r = interpret('define y declara foo');
+  assert.equal(r.query_type, 'definitions');
+  assert.equal(r.confidence, 0.95);
+  const r2 = interpret('usos, referencias y callers de z');
+  assert.equal(r2.query_type, 'references');
+  assert.equal(r2.confidence, 0.95);
+});
+
+test('2.2 combinación ambigua (varias familias, 1 hit c/u) → familia de mayor score, 0.5', () => {
+  const r = interpret('dónde está definido foo y cómo funciona');
+  assert.equal(r.query_type, 'definitions');
+  assert.equal(r.confidence, 0.5);
+});
+
+test('2.2 sin match → default implementation 0.3', () => {
+  assert.deepEqual(interpret('hola mundo'), {
+    query_type: 'implementation',
+    confidence: 0.3,
+    matched: [],
+  });
+});
+
+test('11.7 clasificador local: CF_MODEL_CMD con confianza >= 0.6 → query_type del modelo', () => {
+  const prev = process.env.CF_MODEL_CMD;
+  process.env.CF_MODEL_CMD = 'node test/fixtures/classify.mjs';
+  try {
+    const r = interpret('Who calls retryWithBackoff?');
+    assert.equal(r.ml, true, 'modelo ganó');
+    assert.equal(r.query_type, 'references', 'REFERENCE → references');
+    assert.ok(r.confidence >= 0.6, `confianza ${r.confidence}`);
+  } finally {
+    if (prev !== undefined) process.env.CF_MODEL_CMD = prev;
+    else delete process.env.CF_MODEL_CMD;
+  }
+});
+
+test('11.7 sin CF_MODEL_CMD → regex heurístico (ml ausente)', () => {
+  const prev = process.env.CF_MODEL_CMD;
+  delete process.env.CF_MODEL_CMD;
+  try {
+    const r = interpret('dónde está definido foo');
+    assert.equal(r.ml, undefined);
+    assert.equal(r.query_type, 'definitions');
+  } finally {
+    if (prev !== undefined) process.env.CF_MODEL_CMD = prev;
+    else delete process.env.CF_MODEL_CMD;
+  }
+});

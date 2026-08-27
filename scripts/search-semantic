@@ -1,0 +1,4 @@
+#!/usr/bin/env node
+// search-semantic — degradado en cge-lite: requiere motor ML externo (probe), no incluido.
+// Contrato: NDJSON de hits en stdout; sin modelo → exit 1 sin output (sin resultados).
+process.exit(1);

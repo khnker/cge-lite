@@ -1,0 +1,12 @@
+node_modules/
+dist/
+*.log
+*.ndjson
+engine/.cache.json
+.cqe/
+engine/.bm25-index.json
+*.sqlite
+*.sqlite-journal
+stats/
+cf-stats-*/
+node-compile-cache/
