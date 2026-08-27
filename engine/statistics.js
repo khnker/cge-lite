@@ -16,7 +16,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
-const ENGINE_DIR = fileURLToPath(new URL('.', import.meta.url));
+const MODULE_BASE = import.meta.url ? import.meta.url : 'file://' + path.resolve(process.cwd()) + '/';
+const ENGINE_DIR = fileURLToPath(new URL('.', MODULE_BASE));
 const STATS_FILE = process.env.CF_STATS_FILE || path.join(ENGINE_DIR, 'statistics.ndjson');
 
 // Cardinalidad default por clase de query (D13) — usada cuando no hay datos (n=0).

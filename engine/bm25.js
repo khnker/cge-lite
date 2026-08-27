@@ -21,7 +21,7 @@ const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.pdf', '.woff', '.wo
 // límites de indexación (repos enormes tipo dev=/home/nicolas/dev → OOM sin cap)
 const MAX_FILES = 1000;
 const MAX_FILE_BYTES = 256 * 1024;
-const INDEX_FILE = () => process.env.CF_BM25_INDEX_FILE || path.join(path.dirname(fileURLToPath(import.meta.url)), '.bm25-index.json');
+const INDEX_FILE = () => process.env.CF_BM25_INDEX_FILE || path.join(import.meta.url ? path.dirname(fileURLToPath(import.meta.url)) : process.cwd(), '.bm25-index.json');
 const NO_PERSIST = process.env.CF_BM25_NO_PERSIST === '1';
 
 function tokenize(text) {

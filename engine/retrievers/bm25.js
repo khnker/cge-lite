@@ -7,10 +7,7 @@
 
 import { Retriever, Candidate } from '../retriever.js'
 import { score as bm25Score } from '../bm25.js'
-import { execFileSync } from 'node:child_process'
-import path from 'node:path'
-
-const SCRIPTS_DIR = path.join(path.dirname(new URL(import.meta.url).pathname), '..', '..', 'scripts')
+import { run as searchCodeRun } from '../../scripts/search-code.js'
 
 export class Bm25Retriever extends Retriever {
   get name() { return 'bm25' }
@@ -18,20 +15,10 @@ export class Bm25Retriever extends Retriever {
   async retrieve(query, opts = {}) {
     const { budget = 8000 } = opts
 
-    // Use existing scripts/search-code (rg) for lexical retrieval
-    let raw = ''
-    try {
-      raw = execFileSync(
-        path.join(SCRIPTS_DIR, 'search-code'),
-        ['-n', '-l', '-d', '.', String(query)],
-        { encoding: 'utf8', timeout: 10000, maxBuffer: 8 * 1024 * 1024 }
-      )
-    } catch (e) {
-      // rg returns exit 1 on no matches — not an error for us
-      if (e.status === 1) return []
-      console.error('Bm25Retriever: search-code failed:', e.message)
-      return []
-    }
+    // Use scripts/search-code (rg) for lexical retrieval — in-process (no spawn)
+    const res = searchCodeRun(['-n', '-l', '-d', '.', String(query)])
+    if (res.code !== 0 && !res.out) return [] // rg exit 1 sin matches
+    const raw = res.out
 
     const lines = raw.split('\n').filter(Boolean)
     const candidates = lines.map(line => {

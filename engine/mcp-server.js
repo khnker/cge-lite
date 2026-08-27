@@ -13,13 +13,11 @@
  */
 
 import readline from 'node:readline';
-import { execFileSync } from 'node:child_process';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { pathToFileURL } from 'node:url';
 
 import { runCQP, runIntent } from './engine.js';
-
-const SCRIPTS = fileURLToPath(new URL('../scripts/', import.meta.url));
+import { run as searchCodeRun } from '../scripts/search-code.js';
+import { run as extractRun } from '../scripts/extract-context.js';
 
 const TOOLS = [
   {
@@ -69,14 +67,6 @@ const TOOLS = [
   },
 ];
 
-function runScript(script, args) {
-  try {
-    return execFileSync(script, args, { encoding: 'utf8', maxBuffer: 16 * 1024 * 1024 });
-  } catch (e) {
-    return e.stdout ?? ''; // exit != 0: devolver stdout si lo hay (rg sin matches)
-  }
-}
-
 function handleCall(name, args) {
   switch (name) {
     case 'context_query': {
@@ -88,13 +78,13 @@ function handleCall(name, args) {
     }
     case 'search_files': {
       const a = ['-d', String(args?.dir ?? '.'), ...(args?.case_insensitive ? ['-i'] : []), String(args?.pattern ?? '')];
-      const text = runScript(path.join(SCRIPTS, 'search-code'), a);
+      const text = searchCodeRun(a).out;
       return { content: [{ type: 'text', text }] };
     }
     case 'read_file': {
       const a = [String(args?.path ?? ''), String(args?.start_line ?? 1)];
       if (args?.end_line != null) a.push(String(args.end_line));
-      const text = runScript(path.join(SCRIPTS, 'extract-context'), a);
+      const text = extractRun(a).out;
       return { content: [{ type: 'text', text }] };
     }
     default:
@@ -110,38 +100,43 @@ function respondError(id, message, code = -32000) {
   process.stdout.write(JSON.stringify({ jsonrpc: '2.0', id, error: { code, message } }) + '\n');
 }
 
-const rl = readline.createInterface({ input: process.stdin, terminal: false });
+export function start() {
+  const rl = readline.createInterface({ input: process.stdin, terminal: false });
 
-rl.on('line', (line) => {
-  const trimmed = line.trim();
-  if (!trimmed) return;
-  let msg;
-  try { msg = JSON.parse(trimmed); } catch { return; } // mensaje corrupto → ignorar
-  const { id, method, params } = msg;
+  rl.on('line', (line) => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    let msg;
+    try { msg = JSON.parse(trimmed); } catch { return; } // mensaje corrupto → ignorar
+    const { id, method, params } = msg;
 
-  switch (method) {
-    case 'initialize':
-      respond(id, {
-        protocolVersion: '2024-11-05',
-        capabilities: { tools: {} },
-        serverInfo: { name: 'cge-lite', version: '1.0.0' },
-      });
-      break;
-    case 'notifications/initialized':
-      break; // notification → sin respuesta
-    case 'tools/list':
-      respond(id, { tools: TOOLS });
-      break;
-    case 'tools/call':
-      try {
-        respond(id, handleCall(params?.name, params?.arguments ?? {}));
-      } catch (err) {
-        respondError(id, err.message);
-      }
-      break;
-    default:
-      respondError(id, `method no soportado: ${method}`, -32601);
-  }
-});
+    switch (method) {
+      case 'initialize':
+        respond(id, {
+          protocolVersion: '2024-11-05',
+          capabilities: { tools: {} },
+          serverInfo: { name: 'cge-lite', version: '1.0.0' },
+        });
+        break;
+      case 'notifications/initialized':
+        break; // notification → sin respuesta
+      case 'tools/list':
+        respond(id, { tools: TOOLS });
+        break;
+      case 'tools/call':
+        try {
+          respond(id, handleCall(params?.name, params?.arguments ?? {}));
+        } catch (err) {
+          respondError(id, err.message);
+        }
+        break;
+      default:
+        respondError(id, `method no soportado: ${method}`, -32601);
+    }
+  });
 
-// sin handler de 'close': el exit natural espera el flush de stdout (process.exit() descartaría respuestas pendientes)
+  // sin handler de 'close': el exit natural espera el flush de stdout (process.exit() descartaría respuestas pendientes)
+}
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) start();

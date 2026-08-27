@@ -67,6 +67,30 @@ node engine/mcp-server.js
 ```
 Tools: `context_query` (CQP o lenguaje natural), `search_files`, `read_file`.
 
+## Binario único (Node SEA)
+
+Build de un ejecutable autocontenido (runtime Node + código + binario rg
+embebidos) para la plataforma actual — **sin Node ni npm en la máquina destino**:
+
+```bash
+npm install          # incluye devDeps (esbuild + postject)
+npm run build:sea    # → dist/cge-lite (Linux/macOS) o dist/cge-lite.exe (Windows)
+```
+
+Uso en la máquina destino (solo copiar el binario):
+
+```bash
+./cge-lite 'FIND definitions OF symbol parseConfig' --stats   # CLI (CQP)
+./cge-lite --intent 'dónde está definido parseConfig'         # intención natural
+./cge-lite mcp                                                # servidor MCP stdio
+```
+
+- El binario `rg` vive embebido en el ejecutable y se extrae a
+  `<os.tmpdir()>/cge-lite-rg/` en el primer run (path override vía `CGE_RG_PATH`).
+- Multi-plataforma (Linux/macOS/Windows): `.github/workflows/build-sea.yml`
+  — *Actions → build-sea → Run workflow*; los artefactos quedan en *Artifacts*.
+- `git` sigue siendo la única dependencia de sistema opcional (operator `git-log`).
+
 ## Arquitectura
 
 ```
@@ -80,7 +104,7 @@ engine/
   ir.js / federated.js / retriever.js   plano IR, retrieval federado, framework retriever
   index-layer/      índice persistente v1.8 (node:sqlite WAL): extractors, indexer, store, manifest, watcher
   mcp-server.js     MCP stdio
-scripts/            CLIs Node (mismo contrato que los bash originales)
+scripts/            CLIs Node (`scripts/*.js`, mismo contrato que los bash originales; `build-sea.js` genera el binario SEA)
 test/               node --test (6 unit + smoke e2e)
 ```
 

@@ -20,7 +20,8 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { load, confidence, estimateCandidates as statsEstimate } from './statistics.js';
 import { hintSelect } from './hint.js';
 
-const ENGINE_DIR = fileURLToPath(new URL('.', import.meta.url));
+const MODULE_BASE = import.meta.url ? import.meta.url : 'file://' + path.resolve(process.cwd()) + '/';
+const ENGINE_DIR = fileURLToPath(new URL('.', MODULE_BASE));
 const TELEMETRY = path.join(ENGINE_DIR, 'telemetry.ndjson');
 
 // costos base por tool (D16: base_cost + base_relevance; cardinalidad se estima aparte)

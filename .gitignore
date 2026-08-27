@@ -1,5 +1,6 @@
 node_modules/
 dist/
+cge-lite-rg/
 *.log
 *.ndjson
 engine/.cache.json
@@ -10,3 +11,4 @@ engine/.bm25-index.json
 stats/
 cf-stats-*/
 node-compile-cache/
+.cache.json

@@ -10,7 +10,8 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const ENGINE_DIR = fileURLToPath(new URL('.', import.meta.url));
+const MODULE_BASE = import.meta.url ? import.meta.url : 'file://' + path.resolve(process.cwd()) + '/';
+const ENGINE_DIR = fileURLToPath(new URL('.', MODULE_BASE));
 const QTYPE_ORDER = ['definitions', 'references', 'filename', 'implementation', 'pattern', 'concept'];
 const FEATS = ['tokens', 'est_tokens', 'latency_ms', 'gt_hits', 'exactness', 'n_results', 'recall5', 'mrr'];
 export const DEFAULT_THRESHOLD = 0.35;

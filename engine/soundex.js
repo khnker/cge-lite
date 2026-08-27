@@ -88,7 +88,7 @@ export function buildCorpus(repoDir) {
       for (const x of arr) push(String(x), null);
     } else {
       const bm25File = process.env.CF_BM25_INDEX_FILE
-        || path.join(path.dirname(fileURLToPath(import.meta.url)), '.bm25-index.json');
+        || path.join(import.meta.url ? path.dirname(fileURLToPath(import.meta.url)) : process.cwd(), '.bm25-index.json');
       if (fs.existsSync(bm25File)) {
         const idx = JSON.parse(fs.readFileSync(bm25File, 'utf8'));
         const key = Object.keys(idx).find((k) => path.resolve(k) === path.resolve(repoDir));

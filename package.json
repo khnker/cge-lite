@@ -9,6 +9,7 @@
   },
   "scripts": {
     "test": "node --test",
+    "build:sea": "node scripts/build-sea.js",
     "start": "node engine/mcp-server.js",
     "cli": "node engine/engine.js",
     "bench": "node --test test/bench.test.js"
@@ -19,5 +20,9 @@
   "license": "MIT",
   "dependencies": {
     "@vscode/ripgrep": "^1.18.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2",
+    "postject": "^1.0.0-alpha.6"
   }
 }

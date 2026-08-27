@@ -184,7 +184,7 @@ export function interpret(text) {
   return result;
 }
 
-const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && (import.meta.url ? fileURLToPath(import.meta.url) : process.cwd()) === process.argv[1];
 if (isMain) {
   const text = process.argv.slice(2).join(' ');
   console.log(JSON.stringify(interpret(text)));

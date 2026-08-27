@@ -201,7 +201,7 @@ export function parseCQP(input) {
 }
 
 // --- CLI ---
-const isMain = process.argv[1] === fileURLToPath(import.meta.url);
+const isMain = process.argv[1] && (import.meta.url ? fileURLToPath(import.meta.url) : process.cwd()) === process.argv[1];
 if (isMain) {
   const args = process.argv.slice(2);
   const showAst = args.includes('--ast');

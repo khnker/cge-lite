@@ -22,7 +22,7 @@ import { interpret } from './interpreter.js';
 import { optimize, recordExecution } from './optimizer.js';
 import { queryIndex } from './index-layer/index.js';
 import { record, setFingerprint } from './statistics.js';
-import { rgPath } from '@vscode/ripgrep';
+import { getRgPath } from './rg.js';
 import { score as bm25Score } from './bm25.js';
 import { orderByVoI, voiConfig } from './voi.js';
 import { compile as irCompile, irStats } from './ir.js';
@@ -36,9 +36,13 @@ import { structuralRefine } from './structural-refine.js';
 import { repoFingerprint, walkFiles } from './index-layer/manifest.js';
 import { ensureIndex, symbolLookup, lexicalLookup, dependencyExpand } from './index-ops.js';
 import { select as selectorSelect } from './selector.js';
+import { run as searchCodeRun } from '../scripts/search-code.js';
+import { run as searchStructureRun } from '../scripts/search-structure.js';
+import { run as searchSemanticRun } from '../scripts/search-semantic.js';
+import { run as assembleRun } from '../scripts/assemble-context.js';
 
-const ENGINE_DIR = fileURLToPath(new URL('.', import.meta.url));
-const SCRIPTS = path.join(ENGINE_DIR, '..', 'scripts');
+const MODULE_BASE = import.meta.url || 'file://' + path.resolve(process.cwd()) + '/';
+const ENGINE_DIR = fileURLToPath(new URL('.', MODULE_BASE));
 const CACHE_FILE = path.join(ENGINE_DIR, '.cache.json');
 const CATALOG_DB = '.cqe/catalog.db';
 // override de presupuesto por env (eval-quality por niveles de budget; si no, usa el plan)
@@ -173,22 +177,22 @@ function execOp(op, plan, pool = []) {
   switch (op.tool) {
     case 'search-code': {
       if (hasCatalog) return queryIndex(repoDir, 'lexical', name);
-      const r = runScript(path.join(SCRIPTS, 'search-code'), ['-d', '.', name]);
+      const r = searchCodeRun(['-d', '.', name]);
       return parseGrep(r.out);
     }
     case 'search-structure': {
       if (hasCatalog) return queryIndex(repoDir, 'symbol', name);
-      const r = runScript(path.join(SCRIPTS, 'search-structure'), ['-d', '.', name]);
+      const r = searchStructureRun(['-d', '.', name]);
       return parseStructural(r.out);
     }
     case 'search-semantic': {
-      const r = runScript(path.join(SCRIPTS, 'search-semantic'), ['-d', '.', '-n', String(plan.limit ?? 10), name]);
+      const r = searchSemanticRun(['-d', '.', '-n', String(plan.limit ?? 10), name]);
       return parseNdjson(r.out);
     }
     case 'rg-files': {
       const gargs = ['--files', '.'];
       if (process.env.CF_SEARCH_NO_IGNORE === '1') gargs.unshift('--no-ignore'); // M2 opt-in generated-code
-      const r = runScript(rgPath, gargs);
+      const r = runScript(getRgPath(), gargs);
       const q = name.toLowerCase();
       return r.out.split('\n').filter(Boolean)
         .filter((p) => !/node_modules/.test(p))
@@ -279,7 +283,7 @@ function execOp(op, plan, pool = []) {
       const out = [];
       for (const file of targets) {
         for (const rel of relations) {
-          const res = runScript(rgPath, ['-n', name, file]);
+          const res = runScript(getRgPath(), ['-n', name, file]);
           out.push(...parseGrep(res.out).map((m) => ({ ...m, source: 'follow', match_type: rel })));
         }
       }
@@ -292,7 +296,7 @@ function execOp(op, plan, pool = []) {
       const out = [];
       for (const file of targets) {
         const dir = path.dirname(file);
-        const res = runScript(rgPath, ['--files', dir]);
+        const res = runScript(getRgPath(), ['--files', dir]);
         for (const p of res.out.split('\n').filter(Boolean)) {
           const base = path.basename(p);
           if (inclusions.includes('tests') && /test|spec/i.test(base) && !/node_modules/.test(p)) {
@@ -350,7 +354,7 @@ function fuse(pool, budget) {
   if (pool.length === 0) return [];
   const input = pool.map((r) => JSON.stringify(r)).join('\n') + '\n';
   const fb = process.env.CF_FLOOD_BOOST ?? '0';
-  const r = runScript(path.join(SCRIPTS, 'assemble-context'), [String(budget), fb], input);
+  const r = assembleRun([String(budget), fb], input);
   if (r.out) return parseNdjson(r.out);
   return pool; // fallback: pool crudo sin tiers
 }
@@ -968,19 +972,21 @@ export function runIntent(intentText, opts = {}) {
 }
 
 // --- CLI ---
-const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
-if (isMain) {
-  const args = process.argv.slice(2);
-  const showStats = args.includes('--stats');
-  const intentIdx = args.indexOf('--intent');
-  const q = args.find((a) => !a.startsWith('--'));
+export function runCli(argv = process.argv.slice(2)) {
+  const showStats = argv.includes('--stats');
+  const intentIdx = argv.indexOf('--intent');
+  const q = argv.find((a) => !a.startsWith('--'));
   try {
-    if (!q) throw new Error('uso: node engine/engine.js "<CQP>" [--json] [--stats] | --intent "<texto>" [--stats]');
-    const out = intentIdx >= 0 ? runIntent(args[intentIdx + 1] ?? q) : runCQP(q);
+    if (!q) throw new Error('uso: cge-lite "<CQP>" [--json] [--stats] | --intent "<texto>" [--stats] | mcp');
+    const out = intentIdx >= 0 ? runIntent(argv[intentIdx + 1] ?? q) : runCQP(q);
     process.stdout.write(JSON.stringify(out) + '\n');
     if (showStats) process.stderr.write(JSON.stringify(out.stats) + '\n');
+    return 0;
   } catch (e) {
     process.stderr.write(JSON.stringify({ error: e.message }) + '\n');
-    process.exit(1);
+    return 1;
   }
 }
+
+const isMain = process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href;
+if (isMain) process.exit(runCli());

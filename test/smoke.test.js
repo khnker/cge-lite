@@ -14,14 +14,14 @@ const MCP = path.join(ROOT, 'engine', 'mcp-server.js');
 function wait(ms) { return new Promise((r) => setTimeout(r, ms)); }
 
 test('smoke: pipeline search-code → assemble-context (tier presente)', () => {
-  const raw = execFileSync(path.join(ROOT, 'scripts', 'search-code'), ['-l', '-d', path.join(ROOT, 'engine'), 'parseAST'], {
+  const raw = execFileSync(path.join(ROOT, 'scripts', 'search-code.js'), ['-l', '-d', path.join(ROOT, 'engine'), 'parseAST'], {
     cwd: ROOT, encoding: 'utf8',
   });
   assert.ok(raw.trim().length > 0, 'search-code encuentra parseAST');
   const rows = raw.split('\n').filter(Boolean)
     .map((p) => JSON.stringify({ path: p, line_start: 1, line_end: 1, match_type: 'filename', score: 1, token_estimate: 5, source: 'search-code', reason: 'smoke' }))
     .join('\n') + '\n';
-  const out = execFileSync(path.join(ROOT, 'scripts', 'assemble-context'), ['2000'], {
+  const out = execFileSync(path.join(ROOT, 'scripts', 'assemble-context.js'), ['2000'], {
     cwd: ROOT, input: rows, encoding: 'utf8',
   });
   assert.ok(out.includes('"tier"'), 'assemble-context emite tier');

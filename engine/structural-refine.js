@@ -8,7 +8,7 @@
  */
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import { rgPath } from '@vscode/ripgrep';
+import { getRgPath } from './rg.js';
 
 const ANCHORS = [
   '@Module', '@Injectable', '@Controller', '@Component', '@Service', '@Entity',
@@ -23,7 +23,7 @@ export function structuralRefine(cwd, topN = 15) {
   const docLike = (p) => /\.(md|markdown|rst|txt)$/i.test(p) || /(^|\/)(docs?|skills?|rules?|guides?)(\/|$)/.test(p);
   for (const anchor of ANCHORS) {
     try {
-      const out = execFileSync(rgPath, ['-l', '--no-ignore', '-g', '!node_modules', '-g', '!dist', '-g', '!coverage', '-e', anchor, '.'], {
+      const out = execFileSync(getRgPath(), ['-l', '--no-ignore', '-g', '!node_modules', '-g', '!dist', '-g', '!coverage', '-e', anchor, '.'], {
         cwd, encoding: 'utf8', maxBuffer: 16 * 1024 * 1024,
       });
       for (const p of out.split('\n').filter(Boolean)) {
